@@ -72,4 +72,6 @@ print([
     Heff_z(Kuv, Mv[0], Mv[1], Mv[2]),
 ])
 
+sm = Mv + \
+     2
 
