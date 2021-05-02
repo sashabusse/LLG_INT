@@ -1,9 +1,9 @@
 import numpy as np
 from scipy import optimize
 import sympy as sym
-from sympy import symbols, simplify, lambdify
-from sympy.vector import CoordSys3D, matrix_to_vector
-from geometry_util import pol2cart
+from sympy import symbols, lambdify
+from sympy.vector import CoordSys3D
+from Calculation.geometry_util import pol2cart
 
 import matplotlib.pyplot as plt
 

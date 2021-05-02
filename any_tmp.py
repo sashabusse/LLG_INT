@@ -1,4 +1,16 @@
+import numpy as np
+import json
+import os
+import errno
 
-C = 93e-3
-U = 3.3
-print(C*U)
+with open('samples/tmp.json', 'w') as file:
+    json.dump({'a':'b', 'c':[1,2,3,4], 'gg':False}, file, indent=2)
+
+
+
+
+
+
+
+
+

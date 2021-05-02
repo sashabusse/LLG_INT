@@ -1,4 +1,6 @@
 import numpy as np
+import sympy as sym
+from sympy.vector import matrix_to_vector
 
 
 def pol2cart(r, tet, phi):
@@ -37,3 +39,21 @@ def phi_ort(tet, phi):
     y = np.cos(phi)
     z = 0
     return np.array([x, y, z])
+
+
+def sym_gradient_mat(eq, x_var, y_var, z_var, simplify=False):
+    gx = eq.diff(x_var)
+    gy = eq.diff(y_var)
+    gz = eq.diff(z_var)
+
+    if simplify:
+        gx = sym.simplify(gx)
+        gy = sym.simplify(gy)
+        gz = sym.simplify(gz)
+
+    return np.array([gx, gy, gz])
+
+
+def sym_gradient_vec(eq, x_var, y_var, z_var, coord_sys, simplify=False):
+    gx, gy, gz = sym_gradient_mat(eq, x_var, y_var, z_var, simplify)
+    return matrix_to_vector(sym.Matrix([gx, gy, gz]), coord_sys)

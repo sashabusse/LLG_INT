@@ -2,7 +2,6 @@ import numpy as np
 import sympy as sym
 from sympy import symbols, simplify, lambdify
 from sympy.vector import CoordSys3D
-from material import Material
 
 
 class LLG_EQ:
