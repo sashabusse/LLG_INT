@@ -110,9 +110,40 @@ class StationaryState:
 
         self.Es_lamb = lambdify(Es_varset, self.Es, 'numpy')
 
+    def get_angles_optimize_static(
+            self,
+            film_inst,
+            Hext,
+            tol=None,
+            x0=np.array([np.deg2rad(1.), 0.0, np.deg2rad(179.), 0.0]),
+            bounds=None,
+            random=False,
+            random_tries=10,
+            print_details=False
+    ):
+        return self.get_angles_optimize(
+            film_inst.l1.st.Ms, film_inst.l2.st.Ms,
+            film_inst.l1.st.Ku_1ord, film_inst.l2.st.Ku_1ord,
+            film_inst.l1.st.Ku_2ord, film_inst.l2.st.Ku_2ord,
+            film_inst.J,
+            film_inst.l1.st.t, film_inst.l2.st.t,
+            Hext,
+            tol,
+            x0,
+            bounds,
+            random,
+            random_tries,
+            print_details
+        )
+    
+
     def get_angles_optimize(
             self,
-            film,
+            Ms_1, Ms_2,
+            Ku_1ord_1, Ku_1ord_2,
+            Ku_2ord_1, Ku_2ord_2,
+            J,
+            t_1, t_2,
             Hext,
             tol=None,
             x0=np.array([np.deg2rad(1.), 0.0, np.deg2rad(179.), 0.0]),
@@ -124,10 +155,16 @@ class StationaryState:
         if bounds is None:
             bounds = np.array([(0, np.pi), (0, 2 * np.pi), (0, np.pi), (0, 2 * np.pi)])
 
-        func_l = lambda x: self.funcmin(x, film, Hext)
+        func_l = lambda x: self.funcmin(x,
+                                        Ms_1, Ms_2,
+                                        Ku_1ord_1, Ku_1ord_2,
+                                        Ku_2ord_1, Ku_2ord_2,
+                                        J,
+                                        t_1, t_2,
+                                        Hext)
 
         best_res = None
-        min_E = 1e10
+        min_E = 1e20
 
         n=1
         if random:
@@ -152,23 +189,29 @@ class StationaryState:
             print(best_res)
         return best_res.x
 
-    def funcmin(self, x, film, Hext):
+    def funcmin(self, x,
+                Ms_1, Ms_2,
+                Ku_1ord_1, Ku_1ord_2,
+                Ku_2ord_1, Ku_2ord_2,
+                J,
+                t_1, t_2,
+                Hext):
         tet1 = x[0]
         phi1 = x[1]
-        M1 = pol2cart(film.l1.st.Ms, tet1, phi1)
+        M1 = pol2cart(Ms_1, tet1, phi1)
 
         tet2 = x[2]
         phi2 = x[3]
-        M2 = pol2cart(film.l2.st.Ms, tet2, phi2)
+        M2 = pol2cart(Ms_2, tet2, phi2)
 
         return self.Es_lamb(
             M1[0], M1[1], M1[2],
             M2[0], M2[1], M2[2],
             Hext[0], Hext[1], Hext[2],
-            film.l1.st.Ku_1ord, film.l2.st.Ku_1ord,
-            film.l1.st.Ku_2ord, film.l2.st.Ku_2ord,
-            film.J,
-            film.l1.st.t, film.l2.st.t
+            Ku_1ord_1, Ku_1ord_2,
+            Ku_2ord_1, Ku_2ord_2,
+            J,
+            t_1, t_2
         )
 
     def get_angles_grid(
