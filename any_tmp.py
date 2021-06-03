@@ -1,16 +1,12 @@
+import mpmath as mp
 import numpy as np
-import json
-import os
-import errno
 
-with open('samples/tmp.json', 'w') as file:
-    json.dump({'a':'b', 'c':[1,2,3,4], 'gg':False}, file, indent=2)
+from itertools import product
+a = np.array([1, 2, 3])
+b = np.array([4, 5, 6])
 
-
-
-
-
-
-
-
+for i, j in product(a, b):
+    print(i)
+    print(j)
+    print()
 
