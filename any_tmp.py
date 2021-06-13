@@ -1,12 +1,13 @@
 import mpmath as mp
 import numpy as np
+from matplotlib import pyplot as plt
+import pandas as pd
+import sympy as sym
 
-from itertools import product
-a = np.array([1, 2, 3])
-b = np.array([4, 5, 6])
 
-for i, j in product(a, b):
-    print(i)
-    print(j)
-    print()
+m1 = np.array([[sym.symbols("a11"),sym.symbols("a12")],[sym.symbols("a21"),sym.symbols("a22")]])
+m2 = np.array([[1, 1],[1, 1]])
 
+m3 = m1*sym.I
+
+print(m3)

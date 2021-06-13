@@ -2,6 +2,7 @@ import numpy as np
 import json
 import os
 import errno
+import Calculation.Constants as Constants
 
 
 def check_directory(filename):
@@ -13,34 +14,93 @@ def check_directory(filename):
                 raise
 
 
-def Hk2KuJ(H1k1, H1k2, H2k, Ms, t):
-    Ku_2ord = H1k2*Ms/4.
-    Ku_1ord = (H1k1*Ms/2. - 2*Ku_2ord) + 2*np.pi*(Ms**2)
-    J = (t/2.)*Ms*(H2k - H1k1)
+def Hk2Ku(Hk1, Hk2, Ms):
+    Ku_2ord = Hk2 * Ms / 4.
+    Ku_1ord = (Hk1 * Ms / 2. - 2 * Ku_2ord) + 2 * np.pi * (Ms ** 2)
+    return Ku_1ord, Ku_2ord
+
+
+def Hk2KuJ(Hk1, Hk2, HkJ, Ms, t):
+    Ku_1ord, Ku_2ord = Hk2Ku(Hk1, Hk2, Ms)
+    J = (t/2.)*Ms*(HkJ - Hk1)
     return Ku_1ord, Ku_2ord, J
 
 
+def Ku2Hk(Ku_1ord, Ku_2ord, Ms):
+    Hk2 = 4 * Ku_2ord / Ms
+    Hk1 = 2 * Ku_1ord / Ms + 4 * Ku_2ord / Ms - 4 * np.pi * Ms
+    return Hk1, Hk2
+
+
+def KuJ2Hk(Ku_1ord, Ku_2ord, J, Ms, t):
+    Hk1, Hk2 = Ku2Hk(Ku_1ord, Ku_2ord, Ms)
+    HkJ = Hk1 + 2*J/(t*Ms)
+    return Hk1, Hk2, HkJ
+
+
 class StaticMaterial:
-    def __init__(self, Ms, gamma=5e8, alpha=0.1, Ku_1ord=7e6, Ku_2ord = 0.0, t=12e-7, name='no name'):
-        self.Ms = Ms
-        self.gamma = gamma
-        self.alpha = alpha
-        self.Ku_1ord = Ku_1ord
-        self.Ku_2ord = Ku_2ord
-        self.t = t
-        self.name = name
+    def __init__(self):
+        self.Ms = 610
+        self.gamma = 2.11*Constants.g0_CGS
+        self.alpha = 0.1
+        self.t = 12e-7
+        self.name = 'no name'
+
+        #recalculated parameters
+        self.Ku_1ord = 0
+        self.Ku_2ord = 0
+
+        Hk1 = 7.5e3
+        Hk2 = 6.5e3
+
+        self.update_with_Hk(Hk1, Hk2)
+
+    def update_with_Hk(self, Hk1, Hk2):
+        self.Ku_1ord, self.Ku_2ord = Hk2Ku(Hk1, Hk2, self.Ms)
+
+    @classmethod
+    def from_Hk(cls, Hk1=7.5e3, Hk2=6.5e3, Ms = 610.):
+        inst = cls()
+
+        inst.Ms = Ms
+        inst.update_with_Hk(Hk1, Hk2)
+
+        return inst
+
+    @classmethod
+    def from_Ku(cls, Ku_1ord, Ku_2ord, Ms):
+        inst = cls()
+
+        inst.Ms = Ms
+        inst.Ku_1ord = Ku_1ord
+        inst.Ku_2ord = Ku_2ord
+
+        return inst
 
     @classmethod
     def from_dict(cls, d):
-        return cls(
-            Ms=d['Ms'],
-            gamma=d['gamma'], alpha=d['alpha'],
-            Ku_1ord=d['Ku_1ord'], Ku_2ord=d['Ku_2ord'],
-            t=d['t'],
-            name=d['name']
-        )
+        inst = cls()
 
-    def to_json(self):
+        for key in d.keys():
+            if key == 'Ms':
+                inst.Ms = d[key]
+            if key == 'gamma':
+                inst.gamma = d[key]
+            if key == 'alpha':
+                inst.alpha = d[key]
+            if key == 't':
+                inst.t = d[key]
+            if key == 'name':
+                inst.name = d[key]
+
+            if key == 'Ku_1ord':
+                inst.Ku_1ord = d[key]
+            if key == 'Ku_2ord':
+                inst.Ku_2ord = d[key]
+
+        return inst
+
+    def to_dict(self):
         result = {
             "name": self.name,
             "Ms": self.Ms,
@@ -60,6 +120,18 @@ class StaticMaterial:
         print("\t\tt = {:.2e}".format(self.t))
         print("\t\tgamma = {:.2e}".format(self.gamma))
         print("\t\talpha = {:.4f}".format(self.alpha))
+
+    def Hk1_Hk2(self):
+        Hk1, Hk2 = Ku2Hk(self.Ku_1ord, self.Ku_2ord, self.Ms)
+        return Hk1, Hk2
+
+    def Hk1(self):
+        Hk1, Hk2 = self.Hk1_Hk2()
+        return Hk1
+
+    def Hk2(self):
+        Hk1, Hk2 = self.Hk1_Hk2()
+        return Hk2
 
 
 class Material:
@@ -83,7 +155,11 @@ class LayeredFilm:
         self.l2 = layer2
         self.J = J
 
-    def update_with_Hk(self, H1k1, H1k2, H2k, Ms=None, t=None, zeroJ=False):
+    @classmethod
+    def from_J(cls, layer1, layer2, J):
+        return cls(layer1, layer2, J)
+
+    def update_with_Hk(self, Hk1, Hk2, HkJ, Ms=None, t=None, zeroJ=False):
         if not (t is None):
             self.l1.st.t = t
             self.l2.st.t = t
@@ -91,9 +167,7 @@ class LayeredFilm:
             self.l1.st.Ms = Ms
             self.l2.st.Ms = Ms
 
-        Ku_1ord, Ku_2ord, J = Hk2KuJ(H1k1, H1k2, H2k, self.l1.st.Ms, self.l1.st.t)
-
-        self.J = J
+        Ku_1ord, Ku_2ord, self.J = Hk2KuJ(Hk1, Hk2, HkJ, self.l1.st.Ms, self.l1.st.t)
         if zeroJ:
             self.J = 0.
 
@@ -108,6 +182,7 @@ class LayeredFilm:
         filename = "samples/"+name+".json"
         with open(filename, 'r') as file:
             data = json.load(file)
+
         layer1 = Material(StaticMaterial.from_dict(data['layer_1']))
         layer2 = Material(StaticMaterial.from_dict(data['layer_2']))
         return cls(layer1, layer2, data['J'])
